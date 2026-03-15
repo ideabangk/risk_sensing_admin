@@ -81,8 +81,8 @@ async def run_batch_for_company(
     conn = _get_conn()
     log_id = conn.execute(
         """
-        INSERT INTO batch_logs (company_id, source_type, started_at, status)
-        VALUES (?, ?, ?, 'RUNNING') RETURNING id
+        INSERT INTO batch_logs (company_id, source_type, status)
+        VALUES (?, ?, 'RUNNING') RETURNING id
         """,
         [company_id, ",".join(sources)],
     ).fetchone()[0]
