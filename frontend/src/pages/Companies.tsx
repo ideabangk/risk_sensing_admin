@@ -1,44 +1,61 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { companiesApi, batchApi, Company } from '../api/client'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Play, BarChart2, Trash2, Check, X, Edit2 } from 'lucide-react'
 
-function KeywordInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [input, setInput] = useState('')
-  const add = () => {
-    const trimmed = input.trim()
-    if (trimmed && !value.includes(trimmed)) {
-      onChange([...value, trimmed])
-      setInput('')
-    }
-  }
-  return (
-    <div>
-      <div className="flex gap-2 mb-2">
-        <input
-          className="flex-1 text-sm border border-gray-200 rounded-md px-3 py-1.5 outline-none focus:ring-1 focus:ring-blue-300"
-          placeholder="검색 키워드 추가..."
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
-        />
-        <button onClick={add} className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100">
-          추가
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {value.map(kw => (
-          <span key={kw} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-            {kw}
-            <button onClick={() => onChange(value.filter(v => v !== kw))} className="text-gray-400 hover:text-red-500">
-              <X className="w-3 h-3" />
-            </button>
-          </span>
-        ))}
-      </div>
-    </div>
-  )
+interface KeywordInputHandle {
+  flush: () => string[]
 }
+
+const KeywordInput = forwardRef<KeywordInputHandle, { value: string[]; onChange: (v: string[]) => void }>(
+  ({ value, onChange }, ref) => {
+    const [input, setInput] = useState('')
+    const add = () => {
+      const trimmed = input.trim()
+      if (trimmed && !value.includes(trimmed)) {
+        onChange([...value, trimmed])
+        setInput('')
+      }
+    }
+    useImperativeHandle(ref, () => ({
+      flush: () => {
+        const trimmed = input.trim()
+        if (trimmed && !value.includes(trimmed)) {
+          const next = [...value, trimmed]
+          setInput('')
+          return next
+        }
+        return value
+      }
+    }), [input, value])
+    return (
+      <div>
+        <div className="flex gap-2 mb-2">
+          <input
+            className="flex-1 text-sm border border-gray-200 rounded-md px-3 py-1.5 outline-none focus:ring-1 focus:ring-blue-300"
+            placeholder="검색 키워드 추가..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
+          />
+          <button onClick={add} className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100">
+            추가
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {value.map(kw => (
+            <span key={kw} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+              {kw}
+              <button onClick={() => onChange(value.filter(v => v !== kw))} className="text-gray-400 hover:text-red-500">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+)
 
 export default function Companies() {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -50,6 +67,8 @@ export default function Companies() {
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [newKeywords, setNewKeywords] = useState<string[]>([])
+  const editKeywordsRef = useRef<KeywordInputHandle>(null)
+  const newKeywordsRef = useRef<KeywordInputHandle>(null)
   const navigate = useNavigate()
 
   const load = () => companiesApi.list().then(setCompanies).finally(() => setLoading(false))
@@ -72,14 +91,16 @@ export default function Companies() {
 
   const saveEdit = async () => {
     if (!editId) return
-    await companiesApi.update(editId, { name: editName, search_keywords: editKeywords, is_active: true })
+    const finalKeywords = editKeywordsRef.current?.flush() ?? editKeywords
+    await companiesApi.update(editId, { name: editName, search_keywords: finalKeywords, is_active: true })
     setEditId(null)
     load()
   }
 
   const addCompany = async () => {
     if (!newName.trim()) return
-    await companiesApi.create({ name: newName, search_keywords: newKeywords, is_active: true })
+    const finalKeywords = newKeywordsRef.current?.flush() ?? newKeywords
+    await companiesApi.create({ name: newName, search_keywords: finalKeywords, is_active: true })
     setShowAdd(false)
     setNewName('')
     setNewKeywords([])
@@ -114,7 +135,7 @@ export default function Companies() {
             value={newName}
             onChange={e => setNewName(e.target.value)}
           />
-          <KeywordInput value={newKeywords} onChange={setNewKeywords} />
+          <KeywordInput ref={newKeywordsRef} value={newKeywords} onChange={setNewKeywords} />
           <div className="flex gap-2">
             <button onClick={addCompany} className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700">
               등록
@@ -138,7 +159,7 @@ export default function Companies() {
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                 />
-                <KeywordInput value={editKeywords} onChange={setEditKeywords} />
+                <KeywordInput ref={editKeywordsRef} value={editKeywords} onChange={setEditKeywords} />
                 <div className="flex gap-2">
                   <button onClick={saveEdit} className="flex items-center gap-1 text-xs bg-blue-600 text-white px-2.5 py-1 rounded-md">
                     <Check className="w-3 h-3" /> 저장
