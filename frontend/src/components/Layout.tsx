@@ -10,12 +10,7 @@ const navItems = [
 
 function TossLogo() {
   return (
-    <svg width="52" height="20" viewBox="0 0 52 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0 4H4V20H8V4H12V0H0V4Z" fill="#3182F6"/>
-      <path d="M14 0V4H22V8H14V20H26V16H18V12H26V0H14Z" fill="#3182F6"/>
-      <path d="M28 0V4H36V8H28V20H40V16H32V12H40V0H28Z" fill="#3182F6"/>
-      <path d="M42 4H46V20H50V4H54V0H42V4Z" fill="#3182F6"/>
-    </svg>
+    <img src="/Toss_Logo_Primary.png" alt="Toss" className="h-20" />
   )
 }
 
@@ -26,7 +21,7 @@ export default function Layout() {
       <aside className="w-56 bg-white flex flex-col border-r border-gray-100 shadow-sm">
         <div className="px-5 py-5 border-b border-gray-100">
           <TossLogo />
-          <p className="text-xs text-gray-400 mt-1.5 font-medium">Risk Sensing Admin</p>
+          <p className="text-xm text-gray-400 mt-1.5 font-medium">Toss Risk Sensing Admin</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
