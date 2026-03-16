@@ -5,6 +5,10 @@ from utils.seed import seed_companies
 
 st.set_page_config(page_title="기업 관리 - Risk Sensing", page_icon="🏢", layout="wide")
 
+with st.sidebar:
+    st.image("static/Toss_Logo_Primary.png", width=120)
+    st.caption("Risk Sensing Admin")
+
 st.title("🏢 기업 관리")
 
 companies = get_companies()

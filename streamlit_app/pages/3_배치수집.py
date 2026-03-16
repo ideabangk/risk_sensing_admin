@@ -6,6 +6,10 @@ from utils.batch import run_for_company, run_full
 
 st.set_page_config(page_title="배치 수집 - Risk Sensing", page_icon="⚙️", layout="wide")
 
+with st.sidebar:
+    st.image("static/Toss_Logo_Primary.png", width=120)
+    st.caption("Risk Sensing Admin")
+
 st.title("⚙️ 배치 수집")
 
 SOURCE_OPTIONS = {

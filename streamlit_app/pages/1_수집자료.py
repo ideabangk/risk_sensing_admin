@@ -4,6 +4,10 @@ from utils.db import get_articles, get_companies, update_article_label, delete_a
 
 st.set_page_config(page_title="수집 자료 - Risk Sensing", page_icon="📰", layout="wide")
 
+with st.sidebar:
+    st.image("static/Toss_Logo_Primary.png", width=120)
+    st.caption("Risk Sensing Admin")
+
 st.title("📰 수집 자료")
 
 RISK_LEVELS = ["", "CRITICAL", "HIGH", "MIDDLE", "LOW", "NONE"]

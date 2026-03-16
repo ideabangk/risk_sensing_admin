@@ -125,9 +125,11 @@ if stats["recent_critical"]:
 else:
     st.info("Critical/High 자료가 없습니다.")
 
-# ── Sidebar: Quick Nav ──
+# ── Sidebar ──
 with st.sidebar:
-    st.markdown("### 빠른 이동")
+    st.image("static/Toss_Logo_Primary.png", width=120)
+    st.caption("Risk Sensing Admin")
+    st.divider()
     st.page_link("app.py", label="대시보드", icon="📊")
     st.page_link("pages/1_수집자료.py", label="수집 자료", icon="📰")
     st.page_link("pages/2_기업관리.py", label="기업 관리", icon="🏢")
