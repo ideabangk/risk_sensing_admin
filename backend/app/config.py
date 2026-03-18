@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     naver_client_secret: str = ""
     dart_api_key: str = ""
     anthropic_api_key: str = ""
-    duckdb_path: str = "./data/risk_sensing.duckdb"
+    database_url: str = ""  # postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     batch_interval_hours: int = 6
 

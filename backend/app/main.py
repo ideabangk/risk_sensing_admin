@@ -4,7 +4,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
 
 from app.config import settings
-from app.database import init_db
 from app.seed_data import seed
 from app.routers import companies, articles, dashboard, batch
 from app.services import batch as batch_service
@@ -15,7 +14,6 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    init_db()
     seed()
 
     # Schedule periodic batch

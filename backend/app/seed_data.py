@@ -1,8 +1,6 @@
-"""Seed initial company list into DuckDB."""
+"""Seed initial company list into Supabase."""
 import json
-import duckdb
-from pathlib import Path
-from app.config import settings
+from app.database import new_conn
 
 COMPANIES = [
     "kream", "카카오스타일", "번개장터 주식회사", "cj올리브영", "버킷플레이스",
@@ -20,7 +18,6 @@ COMPANIES = [
     "(주)스마비스", "주식회사 더블엔씨",
 ]
 
-# Clean company name → search keyword mapping
 KEYWORD_OVERRIDES = {
     "cj올리브영": ["CJ올리브영", "올리브영"],
     "삼성물산(주) 패션부문": ["삼성물산 패션", "삼성패션"],
@@ -46,21 +43,19 @@ KEYWORD_OVERRIDES = {
 
 
 def seed():
-    db_path = settings.duckdb_path
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = duckdb.connect(db_path)
+    conn = new_conn()
 
     inserted = 0
     for name in COMPANIES:
         existing = conn.execute(
-            "SELECT id FROM companies WHERE name = ?", [name]
+            "SELECT id FROM companies WHERE name = %s", [name]
         ).fetchone()
         if existing:
             continue
 
         keywords = KEYWORD_OVERRIDES.get(name, [name])
         conn.execute(
-            "INSERT INTO companies (name, search_keywords, is_active) VALUES (?, ?, TRUE)",
+            "INSERT INTO companies (name, search_keywords, is_active) VALUES (%s, %s, TRUE)",
             [name, json.dumps(keywords, ensure_ascii=False)],
         )
         inserted += 1
@@ -68,9 +63,3 @@ def seed():
     conn.commit()
     conn.close()
     print(f"[Seed] Inserted {inserted} companies ({len(COMPANIES) - inserted} already existed)")
-
-
-if __name__ == "__main__":
-    from app.database import init_db
-    init_db()
-    seed()

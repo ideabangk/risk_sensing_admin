@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends
-import duckdb
-from app.database import get_db
+from app.database import get_db, _DBConn
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/stats")
-def get_stats(db: duckdb.DuckDBPyConnection = Depends(get_db)):
+def get_stats(db: _DBConn = Depends(get_db)):
     total = db.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
 
     today_count = db.execute(
@@ -14,10 +13,7 @@ def get_stats(db: duckdb.DuckDBPyConnection = Depends(get_db)):
     ).fetchone()[0]
 
     risk_counts = db.execute(
-        """
-        SELECT risk_level, COUNT(*) as cnt
-        FROM articles GROUP BY risk_level
-        """
+        "SELECT risk_level, COUNT(*) as cnt FROM articles GROUP BY risk_level"
     ).fetchall()
     risk_map = {r[0]: r[1] for r in risk_counts}
 
@@ -106,8 +102,7 @@ def get_stats(db: duckdb.DuckDBPyConnection = Depends(get_db)):
 
 
 @router.get("/risk-heatmap")
-def risk_heatmap(db: duckdb.DuckDBPyConnection = Depends(get_db)):
-    """Risk level distribution per company for heatmap visualization."""
+def risk_heatmap(db: _DBConn = Depends(get_db)):
     rows = db.execute(
         """
         SELECT c.name,

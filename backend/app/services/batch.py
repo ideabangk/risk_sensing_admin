@@ -1,27 +1,21 @@
 """
-Batch collection service: runs crawlers per company and stores to DuckDB.
+Batch collection service: runs crawlers per company and stores to Supabase.
 """
 import json
 from datetime import datetime
 from typing import Optional, List
-import duckdb
 from app.config import settings
+from app.database import new_conn, _j
 from app.services.sentiment import analyze, generate_summary
 from app.services.crawler import naver, consumer_agency, dart
-from pathlib import Path
 
 
-def _get_conn():
-    Path(settings.duckdb_path).parent.mkdir(parents=True, exist_ok=True)
-    return duckdb.connect(settings.duckdb_path)
-
-
-def _upsert_article(conn: duckdb.DuckDBPyConnection, article: dict, company_id: int):
+def _upsert_article(conn, article: dict, company_id: int) -> bool:
     """Insert article if URL not already present. Returns True if inserted."""
     url = article.get("url") or ""
     if url:
         existing = conn.execute(
-            "SELECT id FROM articles WHERE url = ?", [url]
+            "SELECT id FROM articles WHERE url = %s", [url]
         ).fetchone()
         if existing:
             return False
@@ -41,7 +35,7 @@ def _upsert_article(conn: duckdb.DuckDBPyConnection, article: dict, company_id: 
         INSERT INTO articles
             (company_id, source_type, title, content, url, author,
              published_at, sentiment, risk_level, risk_keywords, summary)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         [
             company_id,
@@ -66,23 +60,16 @@ async def run_batch_for_company(
     keywords: Optional[List[str]] = None,
     sources: Optional[List[str]] = None,
 ) -> dict:
-    """
-    Run full collection for one company.
-    sources: subset of ['NEWS', 'BLOG', 'CAFE', 'CONSUMER_AGENCY', 'DART']
-    Returns summary dict.
-    """
     if sources is None:
         sources = ["NEWS", "BLOG", "CAFE", "CONSUMER_AGENCY", "DART"]
 
-    search_term = company_name
-    if keywords:
-        search_term = keywords[0]
+    search_term = keywords[0] if keywords else company_name
 
-    conn = _get_conn()
+    conn = new_conn()
     log_id = conn.execute(
         """
         INSERT INTO batch_logs (company_id, source_type, status)
-        VALUES (?, ?, 'RUNNING') RETURNING id
+        VALUES (%s, %s, 'RUNNING') RETURNING id
         """,
         [company_id, ",".join(sources)],
     ).fetchone()[0]
@@ -131,8 +118,8 @@ async def run_batch_for_company(
     conn.execute(
         """
         UPDATE batch_logs
-        SET status = ?, completed_at = ?, articles_collected = ?, error_message = ?
-        WHERE id = ?
+        SET status = %s, completed_at = %s, articles_collected = %s, error_message = %s
+        WHERE id = %s
         """,
         [
             "FAILED" if error_msg else "SUCCESS",
@@ -156,15 +143,16 @@ async def run_batch_for_company(
 
 async def run_full_batch(source_filter: Optional[List[str]] = None):
     """Run batch for all active companies."""
-    conn = _get_conn()
+    conn = new_conn()
     companies = conn.execute(
         "SELECT id, name, search_keywords FROM companies WHERE is_active = TRUE"
     ).fetchall()
     conn.close()
 
     results = []
-    for company_id, name, kw_json in companies:
-        keywords = json.loads(kw_json) if kw_json else None
+    for row in companies:
+        company_id, name, kw_val = row
+        keywords = _j(kw_val) or None
         result = await run_batch_for_company(
             company_id, name, keywords, source_filter
         )
