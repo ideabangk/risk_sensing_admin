@@ -9,7 +9,7 @@ venv/
 # Env
 .env
 backend/.env
-
+.toml
 # DB
 data/
 *.duckdb
