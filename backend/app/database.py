@@ -1,6 +1,5 @@
 import json
 import psycopg2
-from urllib.parse import urlparse
 from typing import Generator
 from app.config import settings
 
@@ -34,16 +33,11 @@ class _DBConn:
 
 
 def _make_conn():
-    """URL에 특수문자가 포함된 경우도 안전하게 파싱하여 연결."""
-    u = urlparse(settings.database_url)
-    return psycopg2.connect(
-        host=u.hostname,
-        port=u.port or 5432,
-        user=u.username,
-        password=u.password,
-        dbname=u.path.lstrip("/"),
-        sslmode="require",
-    )
+    """DATABASE_URL을 psycopg2에 직접 전달. postgres:// → postgresql:// 자동 변환."""
+    url = settings.database_url.strip()
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    return psycopg2.connect(url)
 
 
 def get_db() -> Generator[_DBConn, None, None]:
