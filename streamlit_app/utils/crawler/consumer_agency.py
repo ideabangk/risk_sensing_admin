@@ -22,7 +22,7 @@ def fetch_press_releases(keyword: Optional[str] = None, pages: int = 2) -> List[
             try:
                 resp = client.get(KCA_LIST_URL, params=params, headers=HEADERS)
                 resp.raise_for_status()
-                soup = BeautifulSoup(resp.text, "lxml")
+                soup = BeautifulSoup(resp.text, "html.parser")
             except Exception as e:
                 print(f"[KCA] page {page}: {e}")
                 continue
@@ -46,7 +46,7 @@ def fetch_press_releases(keyword: Optional[str] = None, pages: int = 2) -> List[
                 content = ""
                 try:
                     r2 = client.get(detail_url, headers=HEADERS, timeout=15)
-                    soup2 = BeautifulSoup(r2.text, "lxml")
+                    soup2 = BeautifulSoup(r2.text, "html.parser")
                     div = soup2.select_one(".brd_view_cont") or soup2.select_one(".view_cont") or soup2.select_one("#contents")
                     if div: content = div.get_text(separator="\n", strip=True)
                 except Exception: pass
