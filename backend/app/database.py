@@ -1,5 +1,6 @@
 import json
 import psycopg2
+from urllib.parse import urlparse
 from typing import Generator
 from app.config import settings
 
@@ -32,13 +33,25 @@ class _DBConn:
         self._conn.close()
 
 
+def _make_conn():
+    """URL에 특수문자가 포함된 경우도 안전하게 파싱하여 연결."""
+    u = urlparse(settings.database_url)
+    return psycopg2.connect(
+        host=u.hostname,
+        port=u.port or 5432,
+        user=u.username,
+        password=u.password,
+        dbname=u.path.lstrip("/"),
+        sslmode="require",
+    )
+
+
 def get_db() -> Generator[_DBConn, None, None]:
-    raw = psycopg2.connect(settings.database_url)
-    db = _DBConn(raw)
+    db = _DBConn(_make_conn())
     try:
         yield db
     except Exception:
-        raw.rollback()
+        db._conn.rollback()
         raise
     finally:
         db.close()
@@ -46,4 +59,4 @@ def get_db() -> Generator[_DBConn, None, None]:
 
 def new_conn() -> _DBConn:
     """배치 서비스 등 DI 외부에서 직접 커넥션이 필요할 때 사용."""
-    return _DBConn(psycopg2.connect(settings.database_url))
+    return _DBConn(_make_conn())
