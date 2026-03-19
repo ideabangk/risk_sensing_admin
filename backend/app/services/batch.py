@@ -67,11 +67,27 @@ def _upsert_article(conn, article: dict, company_id: int) -> bool:
     return True
 
 
+def _filter_kca_for_company(
+    kca_articles: List[dict],
+    company_name: str,
+    keywords: Optional[List[str]] = None,
+) -> List[dict]:
+    """Pre-fetched KCA 전체 보도자료에서 해당 기업 관련 아티클만 필터링."""
+    search_terms = [company_name] + (keywords or [])
+    matched = []
+    for article in kca_articles:
+        haystack = article.get("title", "") + " " + article.get("content", "")
+        if any(term in haystack for term in search_terms):
+            matched.append(article)
+    return matched
+
+
 async def run_batch_for_company(
     company_id: int,
     company_name: str,
     keywords: Optional[List[str]] = None,
     sources: Optional[List[str]] = None,
+    prefetched_kca: Optional[List[dict]] = None,
 ) -> dict:
     if sources is None:
         sources = ["NEWS", "BLOG", "CAFE", "CONSUMER_AGENCY", "DART"]
@@ -103,9 +119,14 @@ async def run_batch_for_company(
                 articles.extend(result_list)
 
         if "CONSUMER_AGENCY" in sources:
-            kca_articles = await consumer_agency.fetch_press_releases(
-                keyword=company_name, pages=2
-            )
+            if prefetched_kca is not None:
+                # 전체 KCA 보도자료에서 회사명/키워드 매칭 아티클만 추출 (별도 크롤링 없음)
+                kca_articles = _filter_kca_for_company(prefetched_kca, company_name, keywords)
+            else:
+                # 단일 기업 수동 배치 등 prefetch 없이 호출된 경우 직접 크롤링
+                kca_articles = await consumer_agency.fetch_press_releases(
+                    keyword=company_name, pages=3
+                )
             articles.extend(kca_articles)
 
         if "DART" in sources:
@@ -155,19 +176,30 @@ async def run_batch_for_company(
 
 
 async def run_full_batch(source_filter: Optional[List[str]] = None):
-    """Run batch for all active companies."""
+    """Run batch for all active companies.
+    KCA 보도자료는 전체를 한 번만 크롤링한 뒤 각 기업별로 로컬 필터링합니다.
+    """
     conn = new_conn()
     companies = conn.execute(
         "SELECT id, name, search_keywords FROM companies WHERE is_active = TRUE"
     ).fetchall()
     conn.close()
 
+    # KCA 전체 보도자료를 한 번만 수집 (기업 수와 무관하게 고정 비용)
+    effective_sources = source_filter or ["NEWS", "BLOG", "CAFE", "CONSUMER_AGENCY", "DART"]
+    prefetched_kca = None
+    if "CONSUMER_AGENCY" in effective_sources:
+        print("[Batch] Fetching KCA press releases (once for all companies)...")
+        prefetched_kca = await consumer_agency.fetch_press_releases(pages=3)
+        print(f"[Batch] KCA: fetched {len(prefetched_kca)} articles total")
+
     results = []
     for row in companies:
         company_id, name, kw_val = row
         keywords = _j(kw_val) or None
         result = await run_batch_for_company(
-            company_id, name, keywords, source_filter
+            company_id, name, keywords, source_filter,
+            prefetched_kca=prefetched_kca,
         )
         results.append(result)
 
