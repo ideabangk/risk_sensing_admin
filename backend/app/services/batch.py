@@ -11,22 +11,35 @@ from app.services.crawler import naver, consumer_agency, dart
 
 
 def _upsert_article(conn, article: dict, company_id: int) -> bool:
-    """Insert article if URL not already present. Returns True if inserted."""
+    """Insert article only if not already present. Returns True if inserted.
+    Sentiment analysis is intentionally called only for new articles to control API cost.
+    """
     url = article.get("url") or ""
+    title = article.get("title", "")
+
     if url:
         existing = conn.execute(
             "SELECT id FROM articles WHERE url = %s", [url]
         ).fetchone()
         if existing:
             return False
+    else:
+        # URL이 없는 아티클은 (company_id, title) 조합으로 중복 체크
+        existing = conn.execute(
+            "SELECT id FROM articles WHERE company_id = %s AND title = %s",
+            [company_id, title],
+        ).fetchone()
+        if existing:
+            return False
 
+    # 신규 아티클에 한해서만 감성 분석 실행 (API 비용 절감)
     sentiment, risk_level, risk_keywords = analyze(
-        article.get("title", ""),
+        title,
         article.get("content", ""),
         article.get("source_type", "NEWS"),
     )
     summary = generate_summary(
-        article.get("title", ""),
+        title,
         article.get("content", ""),
     )
 

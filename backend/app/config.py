@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     database_url: str = ""  # postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
-    batch_interval_hours: int = 6
+    batch_interval_hours: int = 24
 
     @property
     def cors_origins_list(self) -> List[str]:
