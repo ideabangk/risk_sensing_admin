@@ -52,7 +52,12 @@ app.include_router(batch.router, prefix="/api")
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "static_exists": static_path.exists(),
+        "index_exists": (static_path / "index.html").exists(),
+        "static_path": str(static_path),
+    }
 
 
 # 프론트엔드 정적 파일 서빙 (빌드된 경우)
